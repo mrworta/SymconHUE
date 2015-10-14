@@ -58,19 +58,8 @@ class HUEBridge extends IPSModule {
   private function ValidateConfiguration() {
     if ($this->ReadPropertyInteger('LightsCategory') == 0 ||  $this->ReadPropertyString('Host') == '' || $this->ReadPropertyString('User') == '') {
       $this->SetStatus(104);
-    } elseif(!$this->ValidateUser()) {
-      $this->SetStatus(201);
     } else {
-      $this->SetStatus(102);
-    }
-  }
-
-  private function ValidateUser() {
-    $result = (array)$this->Request("/lights", null);
-    if(!isset($result[0]) && !isset($result[0]->error)) {
-      return true;
-    } else {
-      return false;
+      $this->Request("/lights", null);
     }
   }
 
@@ -120,24 +109,27 @@ class HUEBridge extends IPSModule {
     IPS_SemaphoreLeave('CURL');
 
     if ($status != '200') {
-      $this->SetStatus(201);
+      $this->SetStatus(203);
       return false;
     } else {
-      if (isset($data)) {
-        $result = json_decode($result);
-        if (count($result) > 0) {
-          foreach ($result as $item) {
-            if (@$item->error) {
-              $this->SetStatus(299);
-              return false;
-            }
-          }
+      $result = json_decode($result);
+
+      if (is_array($result) && isset($result[0]->error)) {
+        if(@($result[0]->error->description) == 'unauthorized user') {
+          $this->SetStatus(201);
+          return false;
+        } else {
+          $this->SetStatus(299);
+          return false;
         }
+      }
+
+      if (isset($data)) {
         $this->SetStatus(102);
         return true;
       } else {
         $this->SetStatus(102);
-        return json_decode($result);
+        return $result;
       }
     }
   }
@@ -160,10 +152,10 @@ class HUEBridge extends IPSModule {
     curl_close($client);
 
     if ($status != '200') {
-      throw new Exception("Response invalid. Code $status");
+      $this->SetStatus(203);
+      return false;
     } else {
       $result = json_decode($result);
-      //print_r($result);
       if(@isset($result[0]->error)) {
         $this->SetStatus(202);
       } else {
@@ -180,30 +172,32 @@ class HUEBridge extends IPSModule {
     $lightsCategoryId = $this->GetLightsCategory();
 
     $lights = $this->Request('/lights');
-    foreach ($lights as $lightId => $light) {
-      $name = utf8_decode((string)$light->name);
-      $uniqueId = (string)$light->uniqueid;
-      echo "$lightId. $name ($uniqueId)\n";
+    if ($lights) {
+      foreach ($lights as $lightId => $light) {
+        $name = utf8_decode((string)$light->name);
+        $uniqueId = (string)$light->uniqueid;
+        echo "$lightId. $name ($uniqueId)\n";
 
-      $deviceId = $this->GetDeviceByUniqueId($uniqueId);
+        $deviceId = $this->GetDeviceByUniqueId($uniqueId);
 
-      if ($deviceId == 0) {
-        $deviceId = IPS_CreateInstance($this->DeviceGuid());
-        IPS_SetProperty($deviceId, 'UniqueId', $uniqueId);
+        if ($deviceId == 0) {
+          $deviceId = IPS_CreateInstance($this->DeviceGuid());
+          IPS_SetProperty($deviceId, 'UniqueId', $uniqueId);
+        }
+
+        IPS_SetParent($deviceId, $lightsCategoryId);
+        IPS_SetProperty($deviceId, 'LightId', (integer)$lightId);
+        IPS_SetName($deviceId, $name);
+
+        // Verbinde Light mit Bridge
+        if (IPS_GetInstance($deviceId)['ConnectionID'] <> $this->InstanceID) {
+          @IPS_DisconnectInstance($deviceId);
+          IPS_ConnectInstance($deviceId, $this->InstanceID);
+        }
+
+        IPS_ApplyChanges($deviceId);
+        HUE_RequestData($deviceId);
       }
-
-      IPS_SetParent($deviceId, $lightsCategoryId);
-      IPS_SetProperty($deviceId, 'LightId', (integer)$lightId);
-      IPS_SetName($deviceId, $name);
-
-      // Verbinde Light mit Bridge
-      if (IPS_GetInstance($deviceId)['ConnectionID'] <> $this->InstanceID) {
-        @IPS_DisconnectInstance($deviceId);
-        IPS_ConnectInstance($deviceId, $this->InstanceID);
-      }
-
-      IPS_ApplyChanges($deviceId);
-      HUE_RequestData($deviceId);
     }
   }
 
@@ -216,10 +210,12 @@ class HUEBridge extends IPSModule {
     if(!(@$lightsCategoryId > 0)) throw new Exception("Lampenkategorie muss ausgefüllt sein");
 
     $lights = $this->Request('/lights');
-    foreach ($lights as $lightId => $light) {
-      $uniqueId = (string)$light->uniqueid;
-      $deviceId = $this->GetDeviceByUniqueId($uniqueId);
-      if($deviceId > 0) HUE_ApplyData($deviceId, $light);
+    if ($lights) {
+      foreach ($lights as $lightId => $light) {
+        $uniqueId = (string)$light->uniqueid;
+        $deviceId = $this->GetDeviceByUniqueId($uniqueId);
+        if($deviceId > 0) HUE_ApplyData($deviceId, $light);
+      }
     }
   }
 
