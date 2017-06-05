@@ -210,8 +210,8 @@ class HUEBridge extends IPSModule {
           @$uniqueId = (string)$sensor->uniqueid;
 
 	  // Skip devices without id and the MotionCompanion; for now
-	  if (@!$uniqueId) { continue; }
-  	  if (preg_match("/^MotionSensor/i", $uniqueId)) { continue; }
+	  if (@!$uniqueId) { echo "."; continue; }
+  	  if (preg_match("/^MotionSensor/i", $uniqueId)) { echo "."; continue; }
 
           $name = utf8_decode((string)$sensor->name);
 
@@ -340,7 +340,7 @@ class HUEBridge extends IPSModule {
   public function GetDeviceByUniqueId(string $uniqueId) {
     $deviceIds = IPS_GetInstanceListByModuleID($this->LightGuid());
     foreach($deviceIds as $deviceId) {
-      if(IPS_GetProperty($deviceId, 'UniqueId') == $uniqueId) {
+      if(@IPS_GetProperty($deviceId, 'UniqueId') == $uniqueId) {
         return $deviceId;
       }
     }
@@ -349,7 +349,7 @@ class HUEBridge extends IPSModule {
   public function GetDeviceBySensorId(string $uniqueId) {
     $deviceIds = IPS_GetInstanceListByModuleID($this->SensorGuid());
     foreach($deviceIds as $deviceId) {
-      if(IPS_GetProperty($deviceId, 'UniqueId') == $uniqueId) {
+      if(@IPS_GetProperty($deviceId, 'UniqueId') == $uniqueId) {
         return $deviceId;
       }
     }
@@ -358,7 +358,7 @@ class HUEBridge extends IPSModule {
   public function GetDeviceByGroupId(integer $groupId) {
     $deviceIds = IPS_GetInstanceListByModuleID($this->GroupGuid());
     foreach($deviceIds as $deviceId) {
-      if(IPS_GetProperty($deviceId, 'GroupId') == $groupId) {
+      if(@IPS_GetProperty($deviceId, 'GroupId') == $groupId) {
         return $deviceId;
       }
     }
