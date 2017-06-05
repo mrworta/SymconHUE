@@ -6,8 +6,8 @@ class HUESensor extends HUEDevice {
 
   public function Create() {
     parent::Create();
-    $this->RegisterPropertyInteger("UniqueId", 0);
-    $this->RegisterPropertyInteger("SensorFeatures", 0); 
+    $this->RegisterPropertyString("UniqueId", 0);
+    $this->RegisterPropertyInteger("SensorFeatures", ""); 
 
     //if (!IPS_VariableProfileExists('ColorModeSelect.Hue')) IPS_CreateVariableProfile('ColorModeSelect.Hue', 1);
     //IPS_SetVariableProfileAssociation('ColorModeSelect.Hue', 0, 'Farbe', '', 0x000000);
