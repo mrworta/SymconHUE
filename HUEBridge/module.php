@@ -225,7 +225,6 @@ class HUEBridge extends IPSModule {
           }
 
           IPS_SetParent($deviceId, $sensorsCategoryId);
-          IPS_SetProperty($deviceId, 'SensorId', (integer)$sensorId);
           IPS_SetName($deviceId, $name);
 
           // Verbinde Light mit Bridge
